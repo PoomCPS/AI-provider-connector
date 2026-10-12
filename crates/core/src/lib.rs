@@ -8,6 +8,7 @@ pub mod adapter;
 pub mod config;
 pub mod connector;
 pub mod protocol;
+pub mod retry;
 pub mod secret_store;
 pub mod types;
 
@@ -18,6 +19,7 @@ pub use protocol::{
     CompletionRequest, CompletionResponse, FinishReason, Message, StreamChunk, ToolCall,
     ToolDefinition,
 };
+pub use retry::RetryPolicy;
 pub use secret_store::{InMemorySecretStore, SecretStore, SecretStoreError};
 pub use types::{
     ApiKey, ApiKeyError, EndpointUrl, EndpointUrlError, ModelId, ModelIdError, ProviderKind,

@@ -1,6 +1,7 @@
 //! Connector configuration and builder.
 
 use std::sync::Arc;
+use crate::retry::RetryPolicy;
 use crate::secret_store::SecretStore;
 use crate::types::{EndpointUrl, ModelId, ProviderKind};
 
@@ -21,6 +22,7 @@ pub struct ConnectorConfig {
     pub endpoint: EndpointUrl,
     pub model: ModelId,
     pub secret_store: Arc<dyn SecretStore>,
+    pub retry_policy: RetryPolicy,
 }
 
 impl std::fmt::Debug for ConnectorConfig {
@@ -29,6 +31,7 @@ impl std::fmt::Debug for ConnectorConfig {
             .field("provider", &self.provider)
             .field("endpoint", &self.endpoint)
             .field("model", &self.model)
+            .field("retry_policy", &self.retry_policy)
             .field("secret_store", &"<dyn SecretStore>")
             .finish()
     }
@@ -40,6 +43,7 @@ pub struct ConnectorConfigBuilder {
     endpoint: Option<EndpointUrl>,
     model: Option<ModelId>,
     secret_store: Option<Arc<dyn SecretStore>>,
+    retry_policy: Option<RetryPolicy>,
 }
 
 impl Default for ConnectorConfigBuilder {
@@ -55,6 +59,7 @@ impl ConnectorConfigBuilder {
             endpoint: None,
             model: None,
             secret_store: None,
+            retry_policy: None,
         }
     }
 
@@ -78,17 +83,24 @@ impl ConnectorConfigBuilder {
         self
     }
 
+    pub fn retry_policy(mut self, retry_policy: RetryPolicy) -> Self {
+        self.retry_policy = Some(retry_policy);
+        self
+    }
+
     pub fn build(self) -> Result<ConnectorConfig, ConfigError> {
         let provider = self.provider.ok_or(ConfigError::MissingProvider)?;
         let endpoint = self.endpoint.unwrap_or_else(|| provider.default_endpoint());
         let model = self.model.ok_or(ConfigError::MissingModel)?;
         let secret_store = self.secret_store.ok_or(ConfigError::MissingSecretStore)?;
+        let retry_policy = self.retry_policy.unwrap_or_default();
 
         Ok(ConnectorConfig {
             provider,
             endpoint,
             model,
             secret_store,
+            retry_policy,
         })
     }
 }
@@ -125,6 +137,7 @@ mod tests {
         assert_eq!(config.provider, ProviderKind::OpenAICompatible);
         assert_eq!(config.endpoint.as_str(), "https://api.openai.com/v1");
         assert_eq!(config.model.as_str(), "gpt-4o");
+        assert_eq!(config.retry_policy, RetryPolicy::default());
     }
 
     #[test]

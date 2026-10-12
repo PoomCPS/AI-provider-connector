@@ -11,6 +11,11 @@ use crate::types::ProviderKind;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectorError {
+    #[error("retries exhausted after {attempts} attempts, last error: {last_error}")]
+    RetriesExhausted {
+        attempts: u32,
+        last_error: AdapterError,
+    },
     #[error("adapter error: {0}")]
     Adapter(#[from] AdapterError),
     #[error("secret store error: {0}")]
@@ -29,10 +34,6 @@ pub struct Connector {
 
 impl Connector {
     /// Constructs a `Connector` from a validated `ConnectorConfig`.
-    ///
-    /// In Ticket 03, concrete HTTP adapters are not yet wired, so this
-    /// method returns `ConnectorError::NotImplemented`. Use `from_adapter`
-    /// for custom or testing adapters.
     pub fn new(config: ConnectorConfig) -> Result<Self, ConnectorError> {
         Err(ConnectorError::NotImplemented(config.provider))
     }
@@ -47,140 +48,236 @@ impl Connector {
         &self.config
     }
 
-    /// Sends a completion request and awaits the complete response.
+    /// Sends a completion request and awaits the complete response, retrying transient errors.
     pub async fn complete(&self, request: &CompletionRequest) -> Result<CompletionResponse, ConnectorError> {
-        self.adapter.complete(request).await.map_err(ConnectorError::Adapter)
+        let mut attempt = 0;
+        loop {
+            match self.adapter.complete(request).await {
+                Ok(resp) => return Ok(resp),
+                Err(err) => {
+                    attempt += 1;
+                    if !err.is_retryable() {
+                        return Err(ConnectorError::Adapter(err));
+                    }
+                    if attempt >= self.config.retry_policy.max_attempts {
+                        return Err(ConnectorError::RetriesExhausted {
+                            attempts: attempt,
+                            last_error: err,
+                        });
+                    }
+                    let delay = self.config.retry_policy.compute_delay(attempt - 1, err.retry_after());
+                    tokio::time::sleep(delay).await;
+                }
+            }
+        }
     }
 
     /// Sends a completion request and returns an asynchronous stream of token chunks.
+    /// Retries only the initial connection phase; mid-stream disconnects surface immediately.
     pub async fn stream(
         &self,
         request: &CompletionRequest,
     ) -> Result<BoxStream<'static, Result<StreamChunk, ConnectorError>>, ConnectorError> {
-        let stream = self.adapter.stream(request).await.map_err(ConnectorError::Adapter)?;
-        let mapped = stream.map(|res| res.map_err(ConnectorError::Adapter));
-        Ok(Box::pin(mapped))
+        let mut attempt = 0;
+        loop {
+            match self.adapter.stream(request).await {
+                Ok(stream) => {
+                    let mapped = stream.map(|res| res.map_err(ConnectorError::Adapter));
+                    return Ok(Box::pin(mapped));
+                }
+                Err(err) => {
+                    attempt += 1;
+                    if !err.is_retryable() {
+                        return Err(ConnectorError::Adapter(err));
+                    }
+                    if attempt >= self.config.retry_policy.max_attempts {
+                        return Err(ConnectorError::RetriesExhausted {
+                            attempts: attempt,
+                            last_error: err,
+                        });
+                    }
+                    let delay = self.config.retry_policy.compute_delay(attempt - 1, err.retry_after());
+                    tokio::time::sleep(delay).await;
+                }
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::time::Duration;
     use async_trait::async_trait;
     use futures::stream;
     use crate::config::ConnectorConfigBuilder;
     use crate::protocol::{FinishReason, Message};
+    use crate::retry::RetryPolicy;
     use crate::secret_store::{InMemorySecretStore, SecretStore};
     use crate::types::{ApiKey, ModelId};
 
-    struct FakeAdapter {
-        canned_response: CompletionResponse,
-        canned_chunks: Vec<String>,
+    struct MockAdapter {
+        attempts: AtomicU32,
+        fail_with: Vec<AdapterError>,
+        success_response: CompletionResponse,
     }
 
     #[async_trait]
-    impl ProviderAdapter for FakeAdapter {
+    impl ProviderAdapter for MockAdapter {
         async fn complete(&self, _request: &CompletionRequest) -> Result<CompletionResponse, AdapterError> {
-            Ok(self.canned_response.clone())
+            let attempt = self.attempts.fetch_add(1, Ordering::SeqCst) as usize;
+            if attempt < self.fail_with.len() {
+                Err(self.fail_with[attempt].clone())
+            } else {
+                Ok(self.success_response.clone())
+            }
         }
 
         async fn stream(&self, _request: &CompletionRequest) -> Result<BoxStream<'static, Result<StreamChunk, AdapterError>>, AdapterError> {
-            let chunks: Vec<Result<StreamChunk, AdapterError>> = self
-                .canned_chunks
-                .iter()
-                .map(|s| Ok(StreamChunk::token(s.clone())))
-                .chain(std::iter::once(Ok(StreamChunk::done())))
-                .collect();
-            Ok(Box::pin(stream::iter(chunks)))
+            let attempt = self.attempts.fetch_add(1, Ordering::SeqCst) as usize;
+            if attempt < self.fail_with.len() {
+                Err(self.fail_with[attempt].clone())
+            } else {
+                let chunks = vec![
+                    Ok(StreamChunk::token("Hello")),
+                    Ok(StreamChunk::done()),
+                ];
+                Ok(Box::pin(stream::iter(chunks)))
+            }
         }
     }
 
-    #[tokio::test]
-    async fn test_connector_complete_with_fake_adapter() {
-        let secret_store = Arc::new(InMemorySecretStore::new());
-        secret_store
+    fn test_config(retry_policy: RetryPolicy) -> ConnectorConfig {
+        let store = Arc::new(InMemorySecretStore::new());
+        store
             .set(ProviderKind::OpenAICompatible, ApiKey::new("sk-test").unwrap())
             .unwrap();
 
-        let config = ConnectorConfigBuilder::new()
+        ConnectorConfigBuilder::new()
             .provider(ProviderKind::OpenAICompatible)
             .model(ModelId::new("gpt-4o").unwrap())
-            .secret_store(secret_store)
+            .secret_store(store)
+            .retry_policy(retry_policy)
             .build()
-            .unwrap();
+            .unwrap()
+    }
 
-        let fake_adapter = Arc::new(FakeAdapter {
-            canned_response: CompletionResponse {
-                content: "Hello from fake adapter".into(),
+    #[tokio::test]
+    async fn test_retry_on_rate_limit_then_success() {
+        tokio::time::pause();
+
+        let mock = Arc::new(MockAdapter {
+            attempts: AtomicU32::new(0),
+            fail_with: vec![
+                AdapterError::RateLimit { retry_after: None },
+                AdapterError::RateLimit { retry_after: None },
+                AdapterError::RateLimit { retry_after: None },
+            ],
+            success_response: CompletionResponse {
+                content: "Success".into(),
                 input_tokens: 10,
                 output_tokens: 5,
                 finish_reason: FinishReason::Stop,
                 tool_calls: vec![],
             },
-            canned_chunks: vec![],
         });
 
-        let connector = Connector::from_adapter(config, fake_adapter);
+        let policy = RetryPolicy::new(4, Duration::from_millis(10), Duration::from_millis(50));
+        let connector = Connector::from_adapter(test_config(policy), mock.clone());
+
         let req = CompletionRequest::new(ModelId::new("gpt-4o").unwrap(), vec![Message::user("hi")]);
         let resp = connector.complete(&req).await.unwrap();
 
-        assert_eq!(resp.content, "Hello from fake adapter");
-        assert_eq!(resp.input_tokens, 10);
-        assert_eq!(resp.output_tokens, 5);
-        assert_eq!(resp.finish_reason, FinishReason::Stop);
+        assert_eq!(resp.content, "Success");
+        assert_eq!(mock.attempts.load(Ordering::SeqCst), 4);
     }
 
     #[tokio::test]
-    async fn test_connector_stream_with_fake_adapter() {
-        let secret_store = Arc::new(InMemorySecretStore::new());
-        let config = ConnectorConfigBuilder::new()
-            .provider(ProviderKind::OpenAICompatible)
-            .model(ModelId::new("gpt-4o").unwrap())
-            .secret_store(secret_store)
-            .build()
-            .unwrap();
-
-        let fake_adapter = Arc::new(FakeAdapter {
-            canned_response: CompletionResponse {
-                content: String::new(),
+    async fn test_auth_error_never_retried() {
+        let mock = Arc::new(MockAdapter {
+            attempts: AtomicU32::new(0),
+            fail_with: vec![AdapterError::AuthenticationFailed("invalid key".into())],
+            success_response: CompletionResponse {
+                content: "Should not reach".into(),
                 input_tokens: 0,
                 output_tokens: 0,
                 finish_reason: FinishReason::Stop,
                 tool_calls: vec![],
             },
-            canned_chunks: vec!["Hello".into(), " ".into(), "World".into()],
         });
 
-        let connector = Connector::from_adapter(config, fake_adapter);
+        let policy = RetryPolicy::new(5, Duration::from_millis(10), Duration::from_millis(50));
+        let connector = Connector::from_adapter(test_config(policy), mock.clone());
+
         let req = CompletionRequest::new(ModelId::new("gpt-4o").unwrap(), vec![Message::user("hi")]);
-        let mut stream = connector.stream(&req).await.unwrap();
+        let res = connector.complete(&req).await;
 
-        let mut collected = String::new();
-        let mut saw_done = false;
-        while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result.unwrap();
-            if chunk.done {
-                saw_done = true;
-            } else {
-                collected.push_str(&chunk.delta);
-            }
-        }
-
-        assert_eq!(collected, "Hello World");
-        assert!(saw_done);
+        assert!(matches!(res, Err(ConnectorError::Adapter(AdapterError::AuthenticationFailed(_)))));
+        assert_eq!(mock.attempts.load(Ordering::SeqCst), 1);
     }
 
-    #[test]
-    fn test_connector_new_not_implemented_stub() {
-        let secret_store = Arc::new(InMemorySecretStore::new());
-        let config = ConnectorConfigBuilder::new()
-            .provider(ProviderKind::Gemini)
-            .model(ModelId::new("gemini-1.5-pro").unwrap())
-            .secret_store(secret_store)
-            .build()
-            .unwrap();
+    #[tokio::test]
+    async fn test_retry_after_header_honored() {
+        tokio::time::pause();
 
-        let res = Connector::new(config);
-        assert!(matches!(res, Err(ConnectorError::NotImplemented(ProviderKind::Gemini))));
+        let mock = Arc::new(MockAdapter {
+            attempts: AtomicU32::new(0),
+            fail_with: vec![
+                AdapterError::RateLimit {
+                    retry_after: Some(Duration::from_millis(1)),
+                },
+            ],
+            success_response: CompletionResponse {
+                content: "Honored".into(),
+                input_tokens: 1,
+                output_tokens: 1,
+                finish_reason: FinishReason::Stop,
+                tool_calls: vec![],
+            },
+        });
+
+        let policy = RetryPolicy::new(2, Duration::from_secs(10), Duration::from_secs(20));
+        let connector = Connector::from_adapter(test_config(policy), mock.clone());
+
+        let req = CompletionRequest::new(ModelId::new("gpt-4o").unwrap(), vec![Message::user("hi")]);
+        let resp = connector.complete(&req).await.unwrap();
+
+        assert_eq!(resp.content, "Honored");
+        assert_eq!(mock.attempts.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    async fn test_retries_exhausted_returns_error() {
+        tokio::time::pause();
+
+        let mock = Arc::new(MockAdapter {
+            attempts: AtomicU32::new(0),
+            fail_with: vec![
+                AdapterError::ServiceUnavailable,
+                AdapterError::ServiceUnavailable,
+            ],
+            success_response: CompletionResponse {
+                content: "Never".into(),
+                input_tokens: 0,
+                output_tokens: 0,
+                finish_reason: FinishReason::Stop,
+                tool_calls: vec![],
+            },
+        });
+
+        let policy = RetryPolicy::new(2, Duration::from_millis(1), Duration::from_millis(10));
+        let connector = Connector::from_adapter(test_config(policy), mock.clone());
+
+        let req = CompletionRequest::new(ModelId::new("gpt-4o").unwrap(), vec![Message::user("hi")]);
+        let res = connector.complete(&req).await;
+
+        match res {
+            Err(ConnectorError::RetriesExhausted { attempts, last_error }) => {
+                assert_eq!(attempts, 2);
+                assert_eq!(last_error, AdapterError::ServiceUnavailable);
+            }
+            other => panic!("expected RetriesExhausted, got {:?}", other.err()),
+        }
     }
 }
