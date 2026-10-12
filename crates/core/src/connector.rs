@@ -44,7 +44,10 @@ impl Connector {
                 config.endpoint.clone(),
                 config.secret_store.clone(),
             )),
-            ProviderKind::Gemini => return Err(ConnectorError::NotImplemented(ProviderKind::Gemini)),
+            ProviderKind::Gemini => Arc::new(crate::adapters::gemini::GeminiAdapter::new(
+                config.endpoint.clone(),
+                config.secret_store.clone(),
+            )),
         };
         Ok(Self { config, adapter })
     }
@@ -289,6 +292,27 @@ mod tests {
                 assert_eq!(last_error, AdapterError::ServiceUnavailable);
             }
             other => panic!("expected RetriesExhausted, got {:?}", other.err()),
+        }
+    }
+
+    #[test]
+    fn test_connector_new_all_providers() {
+        let store = Arc::new(InMemorySecretStore::new());
+
+        for provider in [
+            ProviderKind::OpenAICompatible,
+            ProviderKind::Anthropic,
+            ProviderKind::Gemini,
+        ] {
+            let config = ConnectorConfigBuilder::new()
+                .provider(provider)
+                .model(ModelId::new("test-model").unwrap())
+                .secret_store(store.clone())
+                .build()
+                .unwrap();
+
+            let conn = Connector::new(config);
+            assert!(conn.is_ok(), "Connector::new should succeed for {:?}", provider);
         }
     }
 }
