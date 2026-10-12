@@ -35,16 +35,24 @@ pub struct Connector {
 impl Connector {
     /// Constructs a `Connector` from a validated `ConnectorConfig`.
     pub fn new(config: ConnectorConfig) -> Result<Self, ConnectorError> {
+        let client = config
+            .tls
+            .build_client()
+            .map_err(|e| AdapterError::Other(e.to_string()))?;
+
         let adapter: Arc<dyn ProviderAdapter> = match config.provider {
-            ProviderKind::OpenAICompatible => Arc::new(crate::adapters::openai::OpenAIAdapter::new(
+            ProviderKind::OpenAICompatible => Arc::new(crate::adapters::openai::OpenAIAdapter::with_client(
+                client,
                 config.endpoint.clone(),
                 config.secret_store.clone(),
             )),
-            ProviderKind::Anthropic => Arc::new(crate::adapters::anthropic::AnthropicAdapter::new(
+            ProviderKind::Anthropic => Arc::new(crate::adapters::anthropic::AnthropicAdapter::with_client(
+                client,
                 config.endpoint.clone(),
                 config.secret_store.clone(),
             )),
-            ProviderKind::Gemini => Arc::new(crate::adapters::gemini::GeminiAdapter::new(
+            ProviderKind::Gemini => Arc::new(crate::adapters::gemini::GeminiAdapter::with_client(
+                client,
                 config.endpoint.clone(),
                 config.secret_store.clone(),
             )),

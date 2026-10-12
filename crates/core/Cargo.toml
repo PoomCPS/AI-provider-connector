@@ -17,6 +17,10 @@ url = { version = "2.5", features = ["serde"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
 eventsource-stream = "0.2"
 keyring = "4"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+rustls-pki-types = "1.15"
+rustls-pemfile = "2.2"
+rustls-native-certs = "0.8"
 
 [dev-dependencies]
 tokio-test = "0.4"

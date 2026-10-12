@@ -3,6 +3,7 @@
 use std::sync::Arc;
 use crate::retry::RetryPolicy;
 use crate::secret_store::SecretStore;
+use crate::tls::TlsConfig;
 use crate::types::{EndpointUrl, ModelId, ProviderKind};
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -13,6 +14,8 @@ pub enum ConfigError {
     MissingModel,
     #[error("missing secret store")]
     MissingSecretStore,
+    #[error("TLS configuration error: {0}")]
+    Tls(#[from] crate::tls::TlsConfigError),
 }
 
 /// Validated configuration for constructing a `Connector`.
@@ -23,6 +26,7 @@ pub struct ConnectorConfig {
     pub model: ModelId,
     pub secret_store: Arc<dyn SecretStore>,
     pub retry_policy: RetryPolicy,
+    pub tls: TlsConfig,
 }
 
 impl std::fmt::Debug for ConnectorConfig {
@@ -32,6 +36,7 @@ impl std::fmt::Debug for ConnectorConfig {
             .field("endpoint", &self.endpoint)
             .field("model", &self.model)
             .field("retry_policy", &self.retry_policy)
+            .field("tls", &self.tls)
             .field("secret_store", &"<dyn SecretStore>")
             .finish()
     }
@@ -44,6 +49,7 @@ pub struct ConnectorConfigBuilder {
     model: Option<ModelId>,
     secret_store: Option<Arc<dyn SecretStore>>,
     retry_policy: Option<RetryPolicy>,
+    tls: Option<TlsConfig>,
 }
 
 impl Default for ConnectorConfigBuilder {
@@ -60,6 +66,7 @@ impl ConnectorConfigBuilder {
             model: None,
             secret_store: None,
             retry_policy: None,
+            tls: None,
         }
     }
 
@@ -88,12 +95,18 @@ impl ConnectorConfigBuilder {
         self
     }
 
+    pub fn tls(mut self, tls: TlsConfig) -> Self {
+        self.tls = Some(tls);
+        self
+    }
+
     pub fn build(self) -> Result<ConnectorConfig, ConfigError> {
         let provider = self.provider.ok_or(ConfigError::MissingProvider)?;
         let endpoint = self.endpoint.unwrap_or_else(|| provider.default_endpoint());
         let model = self.model.ok_or(ConfigError::MissingModel)?;
         let secret_store = self.secret_store.ok_or(ConfigError::MissingSecretStore)?;
         let retry_policy = self.retry_policy.unwrap_or_default();
+        let tls = self.tls.unwrap_or_default();
 
         Ok(ConnectorConfig {
             provider,
@@ -101,6 +114,7 @@ impl ConnectorConfigBuilder {
             model,
             secret_store,
             retry_policy,
+            tls,
         })
     }
 }

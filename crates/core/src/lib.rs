@@ -11,6 +11,7 @@ pub mod connector;
 pub mod protocol;
 pub mod retry;
 pub mod secret_store;
+pub mod tls;
 pub mod types;
 
 pub use adapter::{AdapterError, ProviderAdapter};
@@ -24,6 +25,7 @@ pub use retry::RetryPolicy;
 pub use secret_store::{
     InMemorySecretStore, KeyringSecretStore, SecretStore, SecretStoreError,
 };
+pub use tls::{TlsConfig, TlsConfigError};
 pub use types::{
     ApiKey, ApiKeyError, EndpointUrl, EndpointUrlError, ModelId, ModelIdError, ProviderKind,
 };
