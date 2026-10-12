@@ -29,6 +29,12 @@ pub struct ConnectorConfig {
     pub tls: TlsConfig,
 }
 
+impl ConnectorConfig {
+    pub fn builder() -> ConnectorConfigBuilder {
+        ConnectorConfigBuilder::new()
+    }
+}
+
 impl std::fmt::Debug for ConnectorConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ConnectorConfig")

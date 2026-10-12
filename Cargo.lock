@@ -49,6 +49,7 @@ name = "ai-provider-connector-server"
 version = "0.1.0"
 dependencies = [
  "ai-provider-connector-core",
+ "async-trait",
  "axum",
  "futures",
  "http-body-util",
