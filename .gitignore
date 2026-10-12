@@ -1,0 +1,6 @@
+/target/
+**/*.rs.bk
+.DS_Store
+Thumbs.db
+
+.scratch/ai-provider-connector/issues/
