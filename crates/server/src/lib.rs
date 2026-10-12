@@ -408,4 +408,36 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
+
+    #[tokio::test]
+    async fn test_dashboard_endpoint() {
+        let store = Arc::new(InMemorySecretStore::new());
+        let state = AppState::new(store);
+        let app = build_app(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/dashboard")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let content_type = response
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .unwrap()
+            .to_str()
+            .unwrap();
+        assert!(content_type.contains("text/html"));
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let body_str = String::from_utf8(body.to_vec()).unwrap();
+        assert!(body_str.contains("AI Provider Connector"));
+        assert!(body_str.contains("Swiss Design"));
+        assert!(body_str.contains("Stream Output"));
+    }
 }
