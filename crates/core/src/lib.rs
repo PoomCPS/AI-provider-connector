@@ -21,7 +21,9 @@ pub use protocol::{
     ToolDefinition,
 };
 pub use retry::RetryPolicy;
-pub use secret_store::{InMemorySecretStore, SecretStore, SecretStoreError};
+pub use secret_store::{
+    InMemorySecretStore, KeyringSecretStore, SecretStore, SecretStoreError,
+};
 pub use types::{
     ApiKey, ApiKeyError, EndpointUrl, EndpointUrlError, ModelId, ModelIdError, ProviderKind,
 };

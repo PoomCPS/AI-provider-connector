@@ -1,13 +1,17 @@
-//! SecretStore trait definition and in-memory implementation for testing.
+//! SecretStore trait definition and implementations (InMemory and Keyring).
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use crate::types::{ApiKey, ProviderKind};
+use crate::types::{ApiKey, ApiKeyError, ProviderKind};
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum SecretStoreError {
     #[error("key not found for provider {0}")]
     NotFound(ProviderKind),
+    #[error("keychain is unavailable: {0}")]
+    Unavailable(String),
+    #[error("invalid API key: {0}")]
+    InvalidKey(#[from] ApiKeyError),
     #[error("secret store backend error: {0}")]
     Backend(String),
 }
@@ -67,6 +71,70 @@ impl SecretStore for InMemorySecretStore {
     }
 }
 
+/// OS-native keychain adapter backed by the `keyring` crate.
+/// Persists keys in macOS Keychain, Windows Credential Manager, or Linux Secret Service.
+pub struct KeyringSecretStore {
+    service_name: String,
+}
+
+impl Default for KeyringSecretStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl KeyringSecretStore {
+    pub fn new() -> Self {
+        Self {
+            service_name: "ai-provider-connector".to_string(),
+        }
+    }
+
+    pub fn with_service_name(service_name: impl Into<String>) -> Self {
+        Self {
+            service_name: service_name.into(),
+        }
+    }
+
+    fn entry(&self, provider: ProviderKind) -> Result<keyring::Entry, SecretStoreError> {
+        keyring::Entry::new(&self.service_name, provider.as_str())
+            .map_err(|e| SecretStoreError::Unavailable(e.to_string()))
+    }
+}
+
+impl SecretStore for KeyringSecretStore {
+    fn get(&self, provider: ProviderKind) -> Result<Option<ApiKey>, SecretStoreError> {
+        let entry = self.entry(provider)?;
+        match entry.get_password() {
+            Ok(secret) => {
+                let key = ApiKey::new(&secret).map_err(SecretStoreError::InvalidKey)?;
+                Ok(Some(key))
+            }
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(e) => Err(SecretStoreError::Unavailable(e.to_string())),
+        }
+    }
+
+    fn set(&self, provider: ProviderKind, key: ApiKey) -> Result<(), SecretStoreError> {
+        // Never write an unvalidated string
+        let _ = ApiKey::new(key.expose_secret()).map_err(SecretStoreError::InvalidKey)?;
+        let entry = self.entry(provider)?;
+        entry
+            .set_password(key.expose_secret())
+            .map_err(|e| SecretStoreError::Unavailable(e.to_string()))?;
+        Ok(())
+    }
+
+    fn delete(&self, provider: ProviderKind) -> Result<(), SecretStoreError> {
+        let entry = self.entry(provider)?;
+        match entry.delete_credential() {
+            Ok(()) => Ok(()),
+            Err(keyring::Error::NoEntry) => Ok(()),
+            Err(e) => Err(SecretStoreError::Unavailable(e.to_string())),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -79,10 +147,49 @@ mod tests {
         let key = ApiKey::new("sk-test-12345678").unwrap();
         store.set(ProviderKind::OpenAICompatible, key.clone()).unwrap();
 
-        let retrieved = store.get(ProviderKind::OpenAICompatible).unwrap().expect("key should exist");
+        let retrieved = store
+            .get(ProviderKind::OpenAICompatible)
+            .unwrap()
+            .expect("key should exist");
         assert_eq!(retrieved.expose_secret(), "sk-test-12345678");
 
         store.delete(ProviderKind::OpenAICompatible).unwrap();
         assert_eq!(store.get(ProviderKind::OpenAICompatible).unwrap(), None);
+    }
+
+    #[test]
+    fn test_keyring_secret_store_lifecycle() {
+        let store = KeyringSecretStore::with_service_name("ai-provider-connector-unit-test");
+        let provider = ProviderKind::OpenAICompatible;
+
+        // Ensure clean initial state
+        let _ = store.delete(provider);
+
+        // Verify get on empty entry
+        match store.get(provider) {
+            Ok(None) => {}
+            Err(SecretStoreError::Unavailable(e)) => {
+                eprintln!("Keychain unavailable on host, skipping test: {e}");
+                return;
+            }
+            other => panic!("expected Ok(None), got {:?}", other),
+        }
+
+        // Set key
+        let key = ApiKey::new("sk-test-keyring-lifecycle").unwrap();
+        if let Err(SecretStoreError::Unavailable(e)) = store.set(provider, key.clone()) {
+            eprintln!("Keychain unavailable on host, skipping test: {e}");
+            return;
+        }
+
+        // Read key back
+        let retrieved = store.get(provider).unwrap().expect("key should exist in keychain");
+        assert_eq!(retrieved.expose_secret(), "sk-test-keyring-lifecycle");
+
+        // Delete key
+        store.delete(provider).unwrap();
+
+        // Verify key is gone
+        assert_eq!(store.get(provider).unwrap(), None);
     }
 }
