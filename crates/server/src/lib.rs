@@ -249,4 +249,163 @@ mod tests {
         assert!(body_str.contains("data: {\"delta\":\"Hello \",\"done\":false}"));
         assert!(body_str.contains("data: [DONE]"));
     }
+
+    #[tokio::test]
+    async fn test_set_key_success_and_reflected_in_providers() {
+        let store = Arc::new(InMemorySecretStore::new());
+        let state = AppState::new(store);
+        let app = build_app(state);
+
+        let set_req = serde_json::json!({
+            "key": "sk-new-valid-openai-key-9999"
+        });
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/providers/openai/key")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(serde_json::to_vec(&set_req).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["provider"], "openai");
+        assert_eq!(json["key_set"], true);
+
+        // Verify GET /v1/providers shows key_set: true
+        let list_resp = app
+            .oneshot(
+                Request::builder()
+                    .uri("/v1/providers")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(list_resp.status(), StatusCode::OK);
+        let list_body = list_resp.into_body().collect().await.unwrap().to_bytes();
+        let list_json: Value = serde_json::from_slice(&list_body).unwrap();
+        let openai = list_json
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["id"] == "openai")
+            .unwrap();
+        assert_eq!(openai["key_set"], true);
+    }
+
+    #[tokio::test]
+    async fn test_set_key_invalid_control_char() {
+        let store = Arc::new(InMemorySecretStore::new());
+        let state = AppState::new(store);
+        let app = build_app(state);
+
+        let set_req = serde_json::json!({
+            "key": "sk-invalid\x00key"
+        });
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/providers/openai/key")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(serde_json::to_vec(&set_req).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["error"], "invalid_key");
+    }
+
+    #[tokio::test]
+    async fn test_delete_key_idempotent_and_reflected() {
+        let store = Arc::new(InMemorySecretStore::new());
+        store
+            .set(
+                ProviderKind::OpenAICompatible,
+                ApiKey::new("sk-existing-key-1111").unwrap(),
+            )
+            .unwrap();
+
+        let state = AppState::new(store);
+        let app = build_app(state);
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri("/v1/providers/openai/key")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["provider"], "openai");
+        assert_eq!(json["key_set"], false);
+
+        // Verify GET /v1/providers shows key_set: false
+        let list_resp = app
+            .oneshot(
+                Request::builder()
+                    .uri("/v1/providers")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(list_resp.status(), StatusCode::OK);
+        let list_body = list_resp.into_body().collect().await.unwrap().to_bytes();
+        let list_json: Value = serde_json::from_slice(&list_body).unwrap();
+        let openai = list_json
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["id"] == "openai")
+            .unwrap();
+        assert_eq!(openai["key_set"], false);
+    }
+
+    #[tokio::test]
+    async fn test_set_key_unknown_provider_404() {
+        let store = Arc::new(InMemorySecretStore::new());
+        let state = AppState::new(store);
+        let app = build_app(state);
+
+        let set_req = serde_json::json!({
+            "key": "sk-some-key"
+        });
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/providers/badprovider/key")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(serde_json::to_vec(&set_req).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
 }
