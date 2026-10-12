@@ -5,6 +5,7 @@
 //! credential storage, and a single normalized facade.
 
 pub mod adapter;
+pub mod adapters;
 pub mod config;
 pub mod connector;
 pub mod protocol;

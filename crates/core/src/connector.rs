@@ -35,7 +35,15 @@ pub struct Connector {
 impl Connector {
     /// Constructs a `Connector` from a validated `ConnectorConfig`.
     pub fn new(config: ConnectorConfig) -> Result<Self, ConnectorError> {
-        Err(ConnectorError::NotImplemented(config.provider))
+        let adapter: Arc<dyn ProviderAdapter> = match config.provider {
+            ProviderKind::OpenAICompatible => Arc::new(crate::adapters::openai::OpenAIAdapter::new(
+                config.endpoint.clone(),
+                config.secret_store.clone(),
+            )),
+            ProviderKind::Anthropic => return Err(ConnectorError::NotImplemented(ProviderKind::Anthropic)),
+            ProviderKind::Gemini => return Err(ConnectorError::NotImplemented(ProviderKind::Gemini)),
+        };
+        Ok(Self { config, adapter })
     }
 
     /// Constructs a `Connector` with an explicitly supplied `ProviderAdapter`.
