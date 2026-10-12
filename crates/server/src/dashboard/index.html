@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,12 +10,16 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --color-primary: #D82C2C;       /* Signal Red */
-      --color-secondary: #1A1A1A;     /* Off-Black */
+      --color-primary: #D82C2C;
+      /* Signal Red */
+      --color-secondary: #1A1A1A;
+      /* Off-Black */
       --color-surface-dark: #1A1A1A;
       --color-white: #FFFFFF;
-      --color-neutral: #A9B2B1;       /* Cool Grey */
-      --color-accent-blue: #0033A0;   /* Deep Blue */
+      --color-neutral: #A9B2B1;
+      /* Cool Grey */
+      --color-accent-blue: #0033A0;
+      /* Deep Blue */
       --color-bg-light: #F7F8F9;
       --color-border: #E2E6E6;
       --color-badge-green: #1A8754;
@@ -491,6 +496,7 @@
         opacity: 0;
         transform: translateY(16px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -498,13 +504,26 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
     }
 
     @keyframes blink {
-      0%, 49% { opacity: 1; }
-      50%, 100% { opacity: 0; }
+
+      0%,
+      49% {
+        opacity: 1;
+      }
+
+      50%,
+      100% {
+        opacity: 0;
+      }
     }
 
     /* Footer */
@@ -526,6 +545,7 @@
     }
   </style>
 </head>
+
 <body>
   <!-- Header -->
   <header>
@@ -545,7 +565,8 @@
   <main>
     <div class="page-title-area">
       <h1 class="page-title">Provider Management & Verification</h1>
-      <p class="page-subtitle">Unified abstraction layer connecting OpenAI, Anthropic, and Google Gemini with type-level security, keychain key management, and real-time streaming.</p>
+      <p class="page-subtitle">Unified abstraction layer connecting OpenAI, Anthropic, and Google Gemini with type-level
+        security, keychain key management, and real-time streaming.</p>
     </div>
 
     <div class="dashboard-grid">
@@ -588,11 +609,16 @@
 
             <div class="form-group">
               <label for="console-prompt">Message / Prompt</label>
-              <textarea id="console-prompt" placeholder="Say 'Hello' and tell me what provider you are in one sentence.">Explain the core principle of Swiss graphic design in one sentence.</textarea>
+              <textarea id="console-prompt"
+                placeholder="Say 'Hello' and tell me what provider you are in one sentence.">Explain the core principle of Swiss graphic design in one sentence.</textarea>
             </div>
 
             <button type="submit" class="btn btn-primary" id="btn-send">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
               <span>Send Completion Request</span>
             </button>
           </form>
@@ -614,21 +640,27 @@
     <div class="editor-modal">
       <div class="modal-head">
         <h3 id="modal-provider-title">Configure Key</h3>
-        <button type="button" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" id="btn-close-modal">✕</button>
+        <button type="button" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;"
+          id="btn-close-modal">✕</button>
       </div>
 
       <div class="modal-body">
         <div class="form-group">
           <label for="modal-key-input">API Key</label>
           <input type="password" id="modal-key-input" placeholder="Enter key..." autocomplete="off">
-          <div class="field-hint" id="modal-key-hint">Never transmitted unencrypted; stored directly in OS keychain.</div>
+          <div class="field-hint" id="modal-key-hint">Never transmitted unencrypted; stored directly in OS keychain.
+          </div>
           <div class="inline-error" id="modal-error"></div>
         </div>
       </div>
 
       <div class="modal-foot">
         <button type="button" class="btn btn-danger" id="btn-remove-key">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
           <span>Remove Key</span>
         </button>
 
@@ -714,7 +746,7 @@
     }
 
     // Key Editor Modal
-    window.openKeyEditor = function(providerId) {
+    window.openKeyEditor = function (providerId) {
       activeEditingProvider = providerId;
       const provider = providersState.find(p => p.id === providerId);
       const info = PROVIDER_DISPLAY[providerId] || { name: providerId };
@@ -915,4 +947,5 @@
     loadProviders();
   </script>
 </body>
+
 </html>
