@@ -40,7 +40,10 @@ impl Connector {
                 config.endpoint.clone(),
                 config.secret_store.clone(),
             )),
-            ProviderKind::Anthropic => return Err(ConnectorError::NotImplemented(ProviderKind::Anthropic)),
+            ProviderKind::Anthropic => Arc::new(crate::adapters::anthropic::AnthropicAdapter::new(
+                config.endpoint.clone(),
+                config.secret_store.clone(),
+            )),
             ProviderKind::Gemini => return Err(ConnectorError::NotImplemented(ProviderKind::Gemini)),
         };
         Ok(Self { config, adapter })
