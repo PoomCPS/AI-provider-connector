@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mastering Rust Through Real Code: AI Provider Connector</title>
+  <meta name="description" content="A comprehensive, beginner-friendly, step-by-step interactive guide to learning Rust using the production AI Provider Connector codebase.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #D82C2C;
+      --primary-hover: #b92424;
+      --primary-light: rgba(216, 44, 44, 0.08);
+      --primary-glow: rgba(216, 44, 44, 0.25);
+      --accent-blue: #2563EB;
+      --accent-emerald: #059669;
+      --accent-amber: #D97706;
+      --accent-purple: #7C3AED;
+      
+      --bg-page: #0B0F17;
+      --bg-card: #131B2A;
+      --bg-card-subtle: #192336;
+      --bg-card-hover: #1E293B;
+      --bg-code: #080D15;
+      --border: #1E293B;
+      --border-focus: #38BDF8;
+      
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --text-bright: #FFFFFF;
+
+      --kw: #F43F5E;      /* keywords: fn, pub, let, mut */
+      --type: #38BDF8;    /* types: String, Result, Option */
+      --str: #34D399;     /* strings: "hello" */
+      --fn: #FBBF24;      /* functions: new, complete */
+      --comm: #64748B;    /* comments: // ... */
+      --macro: #A78BFA;   /* macros: println!, json! */
+      --num: #FB923C;     /* numbers: 4096, 0x20 */
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
+      --shadow-lg: 0 12px 36px rgba(0,0,0,0.6);
+      
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    [data-theme="light"] {
+      --bg-page: #F8FAFC;
+      --bg-card: #FFFFFF;
+      --bg-card-subtle: #F1F5F9;
+      --bg-card-hover: #E2E8F0;
+      --bg-code: #0F172A;
+      --border: #E2E8F0;
+      --border-focus: #D82C2C;
+
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --text-dim: #64748B;
+      --text-bright: #020617;
+
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-lg: 0 12px 32px rgba(15,23,42,0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.65;
+      font-size: 15.5px;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    /* Ambient background glow */
+    .ambient-glow {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 400px;
+      background: radial-gradient(ellipse at top, var(--primary-glow) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* Header & Navbar */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background-color: rgba(11, 15, 23, 0.85);
+      border-bottom: 1px solid var(--border);
+    }
+    [data-theme="light"] header {
+      background-color: rgba(255, 255, 255, 0.9);
+    }
+
+    .nav-container {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, var(--primary) 0%, #b92424 100%);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.9rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: var(--radius-sm);
+      letter-spacing: -0.02em;
+      box-shadow: 0 2px 10px var(--primary-glow);
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-sub {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-left: 1px solid var(--border);
+      padding-left: 0.65rem;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .search-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search-box input {
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.45rem 0.85rem 0.45rem 2.2rem;
+      border-radius: var(--radius-md);
+      font-size: 0.825rem;
+      width: 240px;
+      transition: all 0.2s ease;
+    }
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      width: 300px;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      width: 14px;
+      height: 14px;
+      color: var(--text-dim);
+    }
+
+    .theme-toggle-btn {
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: background 0.2s ease;
+    }
+    .theme-toggle-btn:hover {
+      background: var(--bg-card-hover);
+    }
+
+    /* Layout: Sidebar + Main Content */
+    .layout {
+      max-width: 1380px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 2.5rem;
+      padding: 2.5rem 1.75rem 5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        display: none !important;
+      }
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      position: sticky;
+      top: 5rem;
+      height: calc(100vh - 6.5rem);
+      overflow-y: auto;
+      padding-right: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .sidebar-heading {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .nav-item a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+    }
+    .nav-item a:hover {
+      color: var(--text-main);
+      background-color: var(--bg-card-subtle);
+    }
+    .nav-item.active a {
+      color: var(--primary);
+      background-color: var(--primary-light);
+      font-weight: 600;
+      border-left: 3px solid var(--primary);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+    .nav-badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card-subtle);
+      color: var(--text-dim);
+    }
+
+    /* Progress bar */
+    .progress-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+    }
+    .progress-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+    }
+    .progress-bar-track {
+      height: 6px;
+      background: var(--bg-card-subtle);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary) 0%, #F59E0B 100%);
+      transition: width 0.3s ease;
+    }
+
+    /* Content Area */
+    .content-area {
+      display: flex;
+      flex-direction: column;
+      gap: 3.5rem;
+    }
+
+    /* Hero Section */
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(216, 44, 44, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%);
+      border: 1px solid rgba(216, 44, 44, 0.25);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-banner::after {
+      content: "";
+      position: absolute;
+      right: -80px;
+      bottom: -80px;
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary);
+      background: rgba(216, 44, 44, 0.15);
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 1rem;
+    }
+    .hero-title {
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 1rem;
+    }
+    .hero-title span {
+      background: linear-gradient(135deg, #EF4444 0%, #F97316 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-desc {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 780px;
+      margin-bottom: 1.5rem;
+      line-height: 1.7;
+    }
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+    }
+
+    /* Module / Section Cards */
+    .module-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2.25rem;
+      box-shadow: var(--shadow-sm);
+      scroll-margin-top: 5rem;
+      transition: border-color 0.2s ease;
+    }
+    .module-card:hover {
+      border-color: rgba(216, 44, 44, 0.35);
+    }
+
+    .module-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      gap: 1rem;
+    }
+    .module-num {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+    .module-title {
+      font-size: 1.65rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+    .module-file-ref {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      background: var(--bg-card-subtle);
+      padding: 0.35rem 0.65rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .section-p {
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+      line-height: 1.75;
+    }
+
+    /* "Why Rust Feature" Callout Box */
+    .why-box {
+      background: rgba(37, 99, 235, 0.08);
+      border-left: 4px solid var(--accent-blue);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      padding: 1.25rem 1.5rem;
+      margin: 1.5rem 0;
+    }
+    .why-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #60A5FA;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .why-text {
+      font-size: 0.925rem;
+      color: var(--text-main);
+      line-height: 1.65;
+    }
+
+    /* Warning / Insight Alert Box */
+    .insight-box {
+      background: rgba(16, 185, 129, 0.08);
+      border-left: 4px solid var(--accent-emerald);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      padding: 1.25rem 1.5rem;
+      margin: 1.5rem 0;
+    }
+    .insight-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #34D399;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Comparison Table (Other Languages vs Rust) */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    @media (max-width: 768px) {
+      .compare-grid { grid-template-columns: 1fr; }
+    }
+    .compare-col {
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+    }
+    .compare-col.bad {
+      border-top: 3px solid #EF4444;
+    }
+    .compare-col.good {
+      border-top: 3px solid #10B981;
+    }
+    .compare-col-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Code Container & Syntax Highlighting */
+    .code-container {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin: 1.25rem 0;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .code-header {
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+    .code-file {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+    }
+    .copy-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-sm);
+      transition: color 0.15s;
+    }
+    .copy-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.06); }
+
+    pre {
+      padding: 1.25rem;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: #E2E8F0;
+      tab-size: 4;
+    }
+    code { font-family: var(--font-mono); }
+    p code, li code {
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border);
+      color: #F43F5E;
+      padding: 0.15rem 0.4rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85em;
+    }
+
+    /* Token styling */
+    .k { color: var(--kw); font-weight: 600; }      /* keyword */
+    .t { color: var(--type); }                      /* type */
+    .s { color: var(--str); }                       /* string */
+    .f { color: var(--fn); }                        /* function */
+    .c { color: var(--comm); font-style: italic; }  /* comment */
+    .m { color: var(--macro); }                     /* macro */
+    .n { color: var(--num); }                       /* number */
+    .l { color: #A78BFA; }                          /* lifetime */
+
+    /* Interactive Concept Deep Dive Accordion */
+    details.deep-dive {
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin: 1.25rem 0;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+    details.deep-dive[open] {
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+    details.deep-dive summary {
+      padding: 0.9rem 1.25rem;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.925rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      list-style: none;
+    }
+    details.deep-dive summary::-webkit-details-marker { display: none; }
+    details.deep-dive summary::after {
+      content: "+";
+      font-family: var(--font-mono);
+      font-size: 1.2rem;
+      color: var(--text-dim);
+      transition: transform 0.2s ease;
+    }
+    details.deep-dive[open] summary::after {
+      content: "−";
+      color: var(--border-focus);
+    }
+    .deep-dive-content {
+      padding: 1.25rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg-card);
+      font-size: 0.92rem;
+      color: var(--text-muted);
+    }
+
+    /* Flow / Mermaid-like Visual Architecture Diagram */
+    .diagram-wrap {
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+    }
+    .diagram-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .diagram-node {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.825rem;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+    .diagram-node.active {
+      border-color: var(--primary);
+      background: rgba(216, 44, 44, 0.08);
+      color: #F87171;
+      font-weight: 600;
+    }
+    .diagram-arrow {
+      color: var(--text-dim);
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    /* Quiz / Self-Test Section */
+    .quiz-card {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(37, 99, 235, 0.05) 100%);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      margin: 2rem 0;
+    }
+    .quiz-question {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .quiz-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      text-align: left;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .quiz-btn:hover {
+      background: var(--bg-card-subtle);
+      border-color: var(--text-dim);
+    }
+    .quiz-btn.correct {
+      background: rgba(16, 185, 129, 0.2) !important;
+      border-color: #10B981 !important;
+      color: #34D399 !important;
+    }
+    .quiz-btn.wrong {
+      background: rgba(239, 68, 68, 0.2) !important;
+      border-color: #EF4444 !important;
+      color: #F87171 !important;
+    }
+    .quiz-feedback {
+      margin-top: 0.85rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      display: none;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      background: var(--bg-card);
+      padding: 2.5rem 1.75rem;
+      margin-top: 4rem;
+    }
+    .footer-container {
+      max-width: 1380px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    /* Checkbox for completed steps */
+    .step-done-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--text-dim);
+      user-select: none;
+    }
+    .step-done-toggle input {
+      accent-color: var(--primary);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+    .step-done-toggle:hover { color: var(--text-main); }
+  </style>
+</head>
+<body>
+
+  <div class="ambient-glow"></div>
+
+  <!-- Sticky Header -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="brand">
+        <div class="brand-badge">RUST 101</div>
+        <div class="brand-title">
+          <span>AI-Provider-Connector</span>
+          <span class="brand-sub">Newbie to Systems Engineer</span>
+        </div>
+      </a>
+
+      <div class="nav-actions">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="guide-search" placeholder="Search concepts (e.g. Arc, Newtype, ?) ...">
+        </div>
+
+        <button type="button" class="theme-toggle-btn" id="theme-btn">
+          <span id="theme-label">☀️ Light</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <div class="layout">
+    
+    <!-- Sidebar Table of Contents -->
+    <aside class="sidebar">
+      <div class="progress-box">
+        <div class="progress-title">
+          <span>Your Learning Progress</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progress-bar"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sidebar-heading">Foundation & Mindset</div>
+        <ul class="nav-list">
+          <li class="nav-item active"><a href="#intro"><span>0. Why Rust for AI?</span> <span class="nav-badge">Mindset</span></a></li>
+          <li class="nav-item"><a href="#module-1"><span>1. Workspace Anatomy</span> <span class="nav-badge">Cargo</span></a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="sidebar-heading">Type Safety & Security</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="#module-2"><span>2. The Newtype Pattern</span> <span class="nav-badge">Safety</span></a></li>
+          <li class="nav-item"><a href="#module-3"><span>3. Enums & Pattern Matching</span> <span class="nav-badge">ADTs</span></a></li>
+          <li class="nav-item"><a href="#module-4"><span>4. Result, Option & Error</span> <span class="nav-badge">Zero-Null</span></a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="sidebar-heading">Architecture & Concurrency</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="#module-5"><span>5. Traits & Dynamic Dispatch</span> <span class="nav-badge">dyn Trait</span></a></li>
+          <li class="nav-item"><a href="#module-6"><span>6. Ownership, Arc & RwLock</span> <span class="nav-badge">ThreadSafe</span></a></li>
+          <li class="nav-item"><a href="#module-7"><span>7. Async, Tokio & SSE Streams</span> <span class="nav-badge">Async</span></a></li>
+          <li class="nav-item"><a href="#module-8"><span>8. Axum Web Framework</span> <span class="nav-badge">HTTP API</span></a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="sidebar-heading">Hands-on Mastery</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="#module-9"><span>9. Trace a Request End-to-End</span> <span class="nav-badge">Lifecycle</span></a></li>
+          <li class="nav-item"><a href="#glossary"><span>10. Newbie Cheat Sheet</span> <span class="nav-badge">Index</span></a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+
+      <!-- Hero Banner -->
+      <section class="hero-banner" id="intro">
+        <div class="hero-tag">Step-by-Step Interactive Learning Guide</div>
+        <h1 class="hero-title">Learn Rust from Scratch <br>Through a <span>Real Production AI Engine</span></h1>
+        <p class="hero-desc">
+          Are you completely new to Rust? Don't start with dry theoretical math puzzles. 
+          In this guide, you will learn <strong>every fundamental Rust feature</strong> — ownership, borrowing, smart pointers, 
+          traits, async streams, and the newtype pattern — by dissecting the actual <code>AI-provider-connector</code> codebase you have right here.
+        </p>
+        <div class="hero-badges">
+          <div class="pill">🦀 Rust 1.88+ Edition 2021</div>
+          <div class="pill">⚡ Tokio Async Engine</div>
+          <div class="pill">🛡️ Zero-Cost Memory Safety</div>
+          <div class="pill">🌐 Axum 0.8 Web Server</div>
+          <div class="pill">🔑 OS Keychain Security</div>
+        </div>
+      </section>
+
+      <!-- MODULE 0: Why Rust for AI Provider Connector? -->
+      <section class="module-card">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Foundation</div>
+            <h2 class="module-title">Why Did We Build This in Rust? (The Core Mindset)</h2>
+          </div>
+          <label class="step-done-toggle">
+            <input type="checkbox" onchange="toggleStep(this)"> Mark as Read
+          </label>
+        </div>
+
+        <p class="section-p">
+          Imagine you are building a unified bridge connecting OpenAI, Anthropic Claude, and Google Gemini. 
+          Thousands of users are sending prompts, tools are executing, and token streams (SSE) are streaming simultaneously.
+          Why not just write this in Python or TypeScript / Node.js?
+        </p>
+
+        <div class="compare-grid">
+          <div class="compare-col bad">
+            <div class="compare-col-title" style="color: #EF4444;">❌ Python / Node.js Hazards</div>
+            <ul style="padding-left: 1.25rem; font-size: 0.88rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.5rem;">
+              <li><strong>Primitive Obsession:</strong> An API key is just a <code>string</code>. Someone can log it, print it, or pass an empty string without warning.</li>
+              <li><strong>Null Pointer & Runtime Crashes:</strong> <code>TypeError: Cannot read properties of undefined</code> strikes in production at 3 AM.</li>
+              <li><strong>Memory & SSE Pressure:</strong> Keeping 5,000 open Server-Sent Events (SSE) connections in Node or Python consumes gigabytes of RAM.</li>
+              <li><strong>Data Races:</strong> Mutating shared caches across threads without locks leads to corrupted state.</li>
+            </ul>
+          </div>
+          <div class="compare-col good">
+            <div class="compare-col-title" style="color: #10B981;">✅ The Rust Superpowers Used Here</div>
+            <ul style="padding-left: 1.25rem; font-size: 0.88rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.5rem;">
+              <li><strong>Newtype Pattern:</strong> <code>ApiKey</code> is an opaque struct. It is impossible to log the plain secret by mistake.</li>
+              <li><strong>No Null:</strong> <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code> force you to handle missing values and errors at compile time.</li>
+              <li><strong>Zero-Cost Streams:</strong> <code>BoxStream</code> streams tokens with minimal memory overhead, zero garbage collection pauses.</li>
+              <li><strong>Fearless Concurrency:</strong> <code>Arc&lt;RwLock&lt;...&gt;&gt;</code> guarantees at compile-time that multiple threads cannot cause data races.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="why-box">
+          <div class="why-header">💡 The Rust Golden Rule</div>
+          <div class="why-text">
+            <strong>"Make illegal states unrepresentable."</strong> If a state should never happen at runtime (e.g., an empty API key, an unhandled HTTP 429 status, or a forgotten provider branch), write your Rust types so that the compiler refuses to compile the code if that state is possible.
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 1: Cargo & Workspace Anatomy -->
+      <section class="module-card" id="module-1">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Module 1</div>
+            <h2 class="module-title">Cargo & Workspace Structure (Separation of Concerns)</h2>
+          </div>
+          <span class="module-file-ref">Cargo.toml & crates/</span>
+        </div>
+
+        <p class="section-p">
+          When you open the project root, look at the top-level <a href="file:///d:/Project/AI-provider-connector/Cargo.toml" style="color:var(--type);">Cargo.toml</a>. 
+          Notice it doesn't contain any code! Instead, it defines a <strong>Cargo Workspace</strong>:
+        </p>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-file">Cargo.toml (Root Workspace)</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="c"># Cargo.toml at the root</span>
+[workspace]
+members = [
+    <span class="s">"crates/core"</span>,    <span class="c"># Pure domain library (Zero HTTP framework dependency)</span>
+    <span class="s">"crates/server"</span>,  <span class="c"># Axum Web server & Local Dashboard</span>
+]
+resolver = <span class="s">"2"</span></code></pre>
+        </div>
+
+        <div class="why-box">
+          <div class="why-header">🤔 WHY use a Cargo Workspace? (Beginner Question)</div>
+          <div class="why-text">
+            In Node.js, people often put everything in one big folder. But in Rust, compiling a web framework (like Axum) takes time. 
+            By separating <code>crates/core</code> from <code>crates/server</code>:
+            <br>1. Another developer can import <code>ai-provider-connector-core</code> as a pure Rust library without pulling in Axum, HTML dashboards, or HTTP networking!
+            <br>2. Build caching is faster: changes to the server dashboard do not force recompilation of the core AI adapter logic.
+          </div>
+        </div>
+
+        <div class="diagram-wrap">
+          <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Workspace Architecture</div>
+          <div class="diagram-row">
+            <div class="diagram-node">Caller (Python, Node, Web)</div>
+            <div class="diagram-arrow">➔</div>
+            <div class="diagram-node active">crates/server (Axum, SSE, Dashboard)</div>
+            <div class="diagram-arrow">➔</div>
+            <div class="diagram-node active">crates/core (Adapters, Keyring, Retry)</div>
+            <div class="diagram-arrow">➔</div>
+            <div class="diagram-node">Upstream AI (OpenAI / Anthropic / Gemini)</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 2: The Newtype Pattern & Secret Safety -->
+      <section class="module-card" id="module-2">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Module 2</div>
+            <h2 class="module-title">The "Newtype" Pattern & Secret Leak Prevention</h2>
+          </div>
+          <span class="module-file-ref">crates/core/src/types/api_key.rs</span>
+        </div>
+
+        <p class="section-p">
+          In Python, an API key is just <code>api_key: str</code>. But what if someone passes an empty string? Or what if an attacker injects newline characters <code>\r\n</code> to perform HTTP header injection? Or worse: what if your logging library accidentally dumps the plaintext API key into CloudWatch/Datadog?
+        </p>
+        <p class="section-p">
+          Rust solves this with a world-famous idiom called the <strong>Newtype Pattern</strong>. Look at <a href="file:///d:/Project/AI-provider-connector/crates/core/src/types/api_key.rs" style="color:var(--type);">crates/core/src/types/api_key.rs</a>:
+        </p>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-file">crates/core/src/types/api_key.rs</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="c">/// A tuple struct with a private field (String).</span>
+<span class="c">/// The caller CANNOT write `ApiKey("my-secret".into())` directly!</span>
+<span class="k">#[derive(Clone, PartialEq, Eq)]</span>
+<span class="k">pub struct</span> <span class="t">ApiKey</span>(<span class="k">pub(crate)</span> <span class="t">String</span>);
+
+<span class="k">impl</span> <span class="t">ApiKey</span> {
+    <span class="c">/// The ONLY way to create an ApiKey is through this constructor.</span>
+    <span class="k">pub fn</span> <span class="f">new</span>(raw: &amp;<span class="t">str</span>) -&gt; <span class="t">Result</span>&lt;<span class="t">Self</span>, <span class="t">ApiKeyError</span>&gt; {
+        <span class="k">if</span> raw.is_empty() {
+            <span class="k">return</span> <span class="t">Err</span>(<span class="t">ApiKeyError</span>::<span class="t">Empty</span>);
+        }
+        <span class="k">if</span> raw.len() &gt; <span class="n">4096</span> {
+            <span class="k">return</span> <span class="t">Err</span>(<span class="t">ApiKeyError</span>::<span class="t">TooLong</span>(raw.len()));
+        }
+        <span class="c">// Validate bytes: strictly printable ASCII, NO control chars!</span>
+        <span class="k">for</span> (i, b) <span class="k">in</span> raw.bytes().enumerate() {
+            <span class="k">if</span> !(0x20..=0x7E).contains(&amp;b) {
+                <span class="k">return</span> <span class="t">Err</span>(<span class="t">ApiKeyError</span>::<span class="t">InvalidHeaderCharacter</span>(i));
+            }
+        }
+        <span class="t">Ok</span>(<span class="t">Self</span>(raw.to_string()))
+    }
+
+    <span class="c">/// Explicit getter: you must intentionally call expose_secret()</span>
+    <span class="k">pub fn</span> <span class="f">expose_secret</span>(&amp;<span class="k">self</span>) -&gt; &amp;<span class="t">str</span> {
+        &amp;<span class="k">self</span>.0
+    }
+}</code></pre>
+        </div>
+
+        <div class="insight-box">
+          <div class="insight-header">🔒 The Secret Weapon: Custom Debug Trait</div>
+          <div class="insight-text">
+            Notice lines 65-69 in <code>api_key.rs</code>:
+            <pre style="background:transparent; padding:0.5rem 0; color:inherit;"><code><span class="k">impl</span> std::fmt::<span class="t">Debug</span> <span class="k">for</span> <span class="t">ApiKey</span> {
+    <span class="k">fn</span> <span class="f">fmt</span>(&amp;<span class="k">self</span>, f: &amp;<span class="k">mut</span> std::fmt::<span class="t">Formatter</span>&lt;<span class="l">'_</span>&gt;) -&gt; std::fmt::<span class="t">Result</span> {
+        write!(f, <span class="s">"ApiKey(\"***\")"</span>)  <span class="c">// NEVER prints the real key!</span>
+    }
+}</code></pre>
+            In Rust, when you use <code>tracing::info!("{:?}", connector_config)</code>, Rust calls this <code>fmt</code> method. Because we manually implemented <code>Debug</code> instead of using <code>#[derive(Debug)]</code>, the API key is <strong>physically impossible to leak</strong> in debug logs!
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 3: Enums & Exhaustive Pattern Matching -->
+      <section class="module-card" id="module-3">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Module 3</div>
+            <h2 class="module-title">Enums in Rust Are Algebraic Data Types (Not C Enums)</h2>
+          </div>
+          <span class="module-file-ref">crates/core/src/adapter.rs</span>
+        </div>
+
+        <p class="section-p">
+          If you come from TypeScript, Java, or C++, an enum is usually just a list of numbers: <code>0, 1, 2</code>. 
+          In Rust, an <code>enum</code> is an <strong>Algebraic Data Type (Tagged Union)</strong>. Each variant can carry completely different data!
+        </p>
+        <p class="section-p">
+          Look at <a href="file:///d:/Project/AI-provider-connector/crates/core/src/adapter.rs" style="color:var(--type);">crates/core/src/adapter.rs</a>:
+        </p>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-file">crates/core/src/adapter.rs</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="k">#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]</span>
+<span class="k">pub enum</span> <span class="t">AdapterError</span> {
+    <span class="c">// Variant 1: Carries an optional Duration (e.g. from Retry-After header)</span>
+    <span class="k">#[error("rate limit exceeded")]</span>
+    <span class="t">RateLimit</span> { retry_after: <span class="t">Option</span>&lt;<span class="t">Duration</span>&gt; },
+
+    <span class="c">// Variant 2: Unit variant (no data attached)</span>
+    <span class="k">#[error("service unavailable")]</span>
+    <span class="t">ServiceUnavailable</span>,
+
+    <span class="c">// Variant 3: Tuple variant holding an error message string</span>
+    <span class="k">#[error("authentication failed: {0}")]</span>
+    <span class="t">AuthenticationFailed</span>(<span class="t">String</span>),
+
+    <span class="c">// Variant 4: Struct-like variant with multiple named fields!</span>
+    <span class="k">#[error("provider HTTP {status}: {message}")]</span>
+    <span class="t">Http</span> {
+        status: <span class="t">u16</span>,
+        message: <span class="t">String</span>,
+        retry_after: <span class="t">Option</span>&lt;<span class="t">Duration</span>&gt;,
+    },
+}</code></pre>
+        </div>
+
+        <div class="why-box">
+          <div class="why-header">🎯 Exhaustive Pattern Matching: The Compiler Won't Let You Forget</div>
+          <div class="why-text">
+            When checking if an error is retryable in <code>is_retryable(&amp;self)</code>:
+            <pre style="background:transparent; padding:0.5rem 0; color:inherit;"><code><span class="k">match self</span> {
+    <span class="t">Self</span>::<span class="t">RateLimit</span> { .. } =&gt; <span class="k">true</span>,
+    <span class="t">Self</span>::<span class="t">ServiceUnavailable</span> =&gt; <span class="k">true</span>,
+    <span class="t">Self</span>::<span class="t">Http</span> { status, .. } =&gt; *status == <span class="n">429</span> || *status == <span class="n">503</span>,
+    <span class="t">Self</span>::<span class="t">Network</span>(_) =&gt; <span class="k">true</span>,
+    <span class="t">Self</span>::<span class="t">AuthenticationFailed</span>(_) | <span class="t">Self</span>::<span class="t">InvalidRequest</span>(_) =&gt; <span class="k">false</span>,
+    _ =&gt; <span class="k">false</span>,
+}</code></pre>
+            If you add a new error variant tomorrow, Rust will check your <code>match</code> statements at compile-time. You can never have an unhandled case slip into production!
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 4: Result, Option & thiserror -->
+      <section class="module-card" id="module-4">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Module 4</div>
+            <h2 class="module-title">Zero Nulls, Zero Exceptions: Result&lt;T, E&gt; & the ? Operator</h2>
+          </div>
+          <span class="module-file-ref">crates/core/src/connector.rs</span>
+        </div>
+
+        <p class="section-p">
+          Tony Hoare (inventor of the null pointer) called it his "billion-dollar mistake". 
+          Rust does not have <code>null</code>, and it does not use <code>try / catch</code> for normal error handling.
+          Instead, every function that can fail returns <code>Result&lt;T, E&gt;</code>:
+        </p>
+
+        <div class="compare-grid">
+          <div class="compare-col">
+            <div class="compare-col-title" style="color: #60A5FA;">Option&lt;T&gt; (Value might be missing)</div>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom: 0.5rem;">Used for optional things (e.g. <code>retry_after: Option&lt;Duration&gt;</code>)</p>
+            <pre><code><span class="k">enum</span> <span class="t">Option</span>&lt;<span class="t">T</span>&gt; {
+    <span class="t">Some</span>(<span class="t">T</span>),
+    <span class="t">None</span>,
+}</code></pre>
+          </div>
+          <div class="compare-col">
+            <div class="compare-col-title" style="color: #FBBF24;">Result&lt;T, E&gt; (Operation might fail)</div>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom: 0.5rem;">Used for fallible operations (e.g. HTTP call, validation)</p>
+            <pre><code><span class="k">enum</span> <span class="t">Result</span>&lt;<span class="t">T</span>, <span class="t">E</span>&gt; {
+    <span class="t">Ok</span>(<span class="t">T</span>),
+    <span class="t">Err</span>(<span class="t">E</span>),
+}</code></pre>
+          </div>
+        </div>
+
+        <div class="why-box">
+          <div class="why-header">❓ The Magical Question Mark Operator (?)</div>
+          <div class="why-text">
+            How do we avoid writing 100 nested <code>if let Ok(...)</code> blocks? Look at line 40 in <a href="file:///d:/Project/AI-provider-connector/crates/core/src/connector.rs#L40" style="color:inherit; text-decoration:underline;">connector.rs</a>:
+            <pre style="background:transparent; padding:0.5rem 0; color:inherit;"><code><span class="k">let</span> client = config
+    .tls
+    .build_client()
+    .map_err(|e| <span class="t">AdapterError</span>::<span class="t">Other</span>(e.to_string()))<span class="k">?</span>;  <span class="c">// &lt;-- Notice the '?'</span></code></pre>
+            <strong>What does <code>?</code> do?</strong>
+            <br>1. If <code>build_client()</code> returns <code>Ok(client)</code>, it unwraps the inner value and puts it in <code>client</code>.
+            <br>2. If it returns <code>Err(e)</code>, the function <strong>immediately returns</strong> <code>Err(e)</code> to the caller!
+            <br>It's like an automatic, type-safe return-early guard, completely eliminating pyramid-of-doom callbacks!
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 5: Traits & dyn Trait Polymorphism -->
+      <section class="module-card" id="module-5">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Module 5</div>
+            <h2 class="module-title">Polymorphic Adapters: Traits vs Dynamic Dispatch (dyn Trait)</h2>
+          </div>
+          <span class="module-file-ref">crates/core/src/adapter.rs & connector.rs</span>
+        </div>
+
+        <p class="section-p">
+          Our connector supports <strong>OpenAI</strong>, <strong>Anthropic</strong>, and <strong>Gemini</strong>. 
+          Each provider has completely different JSON schemas and REST endpoints. 
+          How do we unify them behind a single interface without repeating code?
+        </p>
+
+        <p class="section-p">
+          We define a <strong>Trait</strong> (Rust's equivalent to an interface, but zero-cost by default):
+        </p>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-file">crates/core/src/adapter.rs</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="c">/// The single primary seam for all AI providers</span>
+<span class="k">#[async_trait]</span>
+<span class="k">pub trait</span> <span class="t">ProviderAdapter</span>: <span class="t">Send</span> + <span class="t">Sync</span> {
+    <span class="c">/// Non-streaming completion</span>
+    <span class="k">async fn</span> <span class="f">complete</span>(&amp;<span class="k">self</span>, request: &amp;<span class="t">CompletionRequest</span>) 
+        -&gt; <span class="t">Result</span>&lt;<span class="t">CompletionResponse</span>, <span class="t">AdapterError</span>&gt;;
+
+    <span class="c">/// Real-time token streaming</span>
+    <span class="k">async fn</span> <span class="f">stream</span>(&amp;<span class="k">self</span>, request: &amp;<span class="t">CompletionRequest</span>) 
+        -&gt; <span class="t">Result</span>&lt;<span class="t">BoxStream</span>&lt;<span class="l">'static</span>, <span class="t">Result</span>&lt;<span class="t">StreamChunk</span>, <span class="t">AdapterError</span>&gt;&gt;, <span class="t">AdapterError</span>&gt;;
+}</code></pre>
+        </div>
+
+        <details class="deep-dive">
+          <summary>🧠 Why <code>Arc&lt;dyn ProviderAdapter&gt;</code> instead of Generics? (Click to expand)</summary>
+          <div class="deep-dive-content">
+            In Rust, you can do polymorphism in two ways:
+            <br><br>
+            <strong>1. Static Dispatch (Generics: <code>struct Connector&lt;A: ProviderAdapter&gt; { adapter: A }</code>)</strong>:
+            The compiler generates specialized assembly for each adapter at compile time (monomorphization). Extremely fast, but the type of <code>Connector</code> depends on the provider. You can't store OpenAI and Anthropic in the same array or web server state easily without complex type parameters.
+            <br><br>
+            <strong>2. Dynamic Dispatch (Trait Objects: <code>Arc&lt;dyn ProviderAdapter&gt;</code>)</strong>:
+            The <code>dyn</code> keyword tells Rust to use a <strong>vtable</strong> (virtual method table) pointer. 
+            This allows us to store any adapter inside the web server's <code>AppState</code>, swap adapters at runtime, or inject mock adapters in unit tests!
+          </div>
+        </details>
+      </section>
+
+      <!-- MODULE 6: Ownership, Arc & RwLock -->
+      <section class="module-card" id="module-6">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Module 6</div>
+            <h2 class="module-title">Ownership, Borrowing, Arc & RwLock (Thread Safety)</h2>
+          </div>
+          <span class="module-file-ref">crates/server/src/state.rs</span>
+        </div>
+
+        <p class="section-p">
+          This is the #1 hurdle for Rust beginners: <strong>The Borrow Checker</strong>.
+          Rust enforces three iron rules at compile time:
+        </p>
+
+        <div class="compare-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+          <div class="compare-col">
+            <div class="compare-col-title" style="color:#38BDF8;">1. Single Owner</div>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Every piece of memory has exactly one owner variable. When that owner goes out of scope, the memory is instantly freed.</p>
+          </div>
+          <div class="compare-col">
+            <div class="compare-col-title" style="color:#34D399;">2. Shared References (&amp;T)</div>
+            <p style="font-size:0.8rem; color:var(--text-muted);">You can have unlimited immutable borrows (readers). No one is allowed to modify the data while readers exist.</p>
+          </div>
+          <div class="compare-col">
+            <div class="compare-col-title" style="color:#F59E0B;">3. Mutable Reference (&amp;mut T)</div>
+            <p style="font-size:0.8rem; color:var(--text-muted);">You can have at most ONE mutable borrow (writer). While writing, no readers or other writers are allowed. Zero data races!</p>
+          </div>
+        </div>
+
+        <p class="section-p" style="margin-top: 1.25rem;">
+          Now look at <a href="file:///d:/Project/AI-provider-connector/crates/server/src/state.rs" style="color:var(--type);">crates/server/src/state.rs</a>. 
+          In a multithreaded web server, dozens of HTTP requests hit our server simultaneously. How do we share state?
+        </p>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-file">crates/server/src/state.rs</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="k">#[derive(Clone)]</span>
+<span class="k">pub struct</span> <span class="t">AppState</span> {
+    <span class="c">// Atomic Reference Counted trait object:</span>
+    <span class="k">pub</span> secret_store: <span class="t">Arc</span>&lt;<span class="k">dyn</span> <span class="t">SecretStore</span>&gt;,
+    
+    <span class="c">// Thread-safe Read/Write lock wrapping a HashMap:</span>
+    <span class="k">pub</span> adapter_overrides: <span class="t">Arc</span>&lt;<span class="t">RwLock</span>&lt;<span class="t">HashMap</span>&lt;<span class="t">ProviderKind</span>, <span class="t">Arc</span>&lt;<span class="k">dyn</span> <span class="t">ProviderAdapter</span>&gt;&gt;&gt;&gt;,
+}</code></pre>
+        </div>
+
+        <div class="why-box">
+          <div class="why-header">🔍 Anatomy of Arc&lt;RwLock&lt;T&gt;&gt;</div>
+          <div class="why-text">
+            <strong>What is <code>Arc&lt;T&gt;</code>?</strong>
+            <br>Stands for <em>Atomic Reference Counting</em>. It lets multiple threads hold a pointer to the same heap data. When the last thread drops its <code>Arc</code>, the data is automatically deallocated.
+            <br><br>
+            <strong>What is <code>RwLock&lt;T&gt;</code>?</strong>
+            <br>Stands for <em>Reader-Writer Lock</em>. Multiple HTTP requests can read <code>.read()</code> simultaneously at full speed. But when a test injects an override via <code>.write()</code>, it safely waits until all readers finish. 
+            <br><strong>Result:</strong> 100% thread safety guaranteed by the compiler. No segfaults, no deadlocks!
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 7: Async Rust, Tokio & SSE Streams -->
+      <section class="module-card" id="module-7">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Module 7</div>
+            <h2 class="module-title">Async Rust & Real-Time Token Streaming (Tokio + BoxStream)</h2>
+          </div>
+          <span class="module-file-ref">crates/core/src/connector.rs & retry.rs</span>
+        </div>
+
+        <p class="section-p">
+          Unlike Go (which uses green threads with goroutines) or JavaScript (which has a single event loop), 
+          Rust's async model is <strong>zero-overhead and pull-based</strong>. 
+          A Rust <code>Future</code> does nothing until it is actively polled by an executor (like <strong>Tokio</strong>)!
+        </p>
+
+        <p class="section-p">
+          Look at how retries are handled in <a href="file:///d:/Project/AI-provider-connector/crates/core/src/connector.rs#L74" style="color:var(--type);">connector.rs</a>:
+        </p>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-file">crates/core/src/connector.rs</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="k">pub async fn</span> <span class="f">complete</span>(&amp;<span class="k">self</span>, request: &amp;<span class="t">CompletionRequest</span>) 
+    -&gt; <span class="t">Result</span>&lt;<span class="t">CompletionResponse</span>, <span class="t">ConnectorError</span>&gt; 
+{
+    <span class="k">let mut</span> attempt = <span class="n">0</span>;
+    <span class="k">loop</span> {
+        <span class="k">match</span> <span class="k">self</span>.adapter.complete(request).<span class="k">await</span> {
+            <span class="t">Ok</span>(resp) =&gt; <span class="k">return</span> <span class="t">Ok</span>(resp),
+            <span class="t">Err</span>(err) =&gt; {
+                attempt += <span class="n">1</span>;
+                <span class="k">if</span> !err.is_retryable() {
+                    <span class="k">return</span> <span class="t">Err</span>(<span class="t">ConnectorError</span>::<span class="t">Adapter</span>(err));
+                }
+                <span class="k">if</span> attempt &gt;= <span class="k">self</span>.config.retry_policy.max_attempts {
+                    <span class="k">return</span> <span class="t">Err</span>(<span class="t">ConnectorError</span>::<span class="t">RetriesExhausted</span> {
+                        attempts: attempt,
+                        last_error: err,
+                    });
+                }
+                <span class="c">// Non-blocking sleep: frees OS thread to process other requests!</span>
+                <span class="k">let</span> delay = <span class="k">self</span>.config.retry_policy.compute_delay(attempt - <span class="n">1</span>, err.retry_after());
+                tokio::time::sleep(delay).<span class="k">await</span>;
+            }
+        }
+    }
+}</code></pre>
+        </div>
+
+        <div class="insight-box">
+          <div class="insight-header">⚡ Why tokio::time::sleep Instead of std::thread::sleep?</div>
+          <div class="insight-text">
+            If you call <code>std::thread::sleep(delay)</code>, you physically block an entire OS thread. If all 8 threads on your CPU are sleeping, your server can't handle a single incoming request!
+            <br>When you call <code>tokio::time::sleep(delay).await</code>, Tokio simply pauses that individual task and immediately schedules other HTTP requests on that CPU core. Zero wasted resources!
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 8: Axum Web Framework -->
+      <section class="module-card" id="module-8">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Module 8</div>
+            <h2 class="module-title">Axum 0.8: Type-Safe HTTP Routing & Handlers</h2>
+          </div>
+          <span class="module-file-ref">crates/server/src/routes/completions.rs</span>
+        </div>
+
+        <p class="section-p">
+          How does the server accept requests? In Express or Flask, request objects are dynamically typed dictionaries. 
+          In <strong>Axum</strong> (Rust's premier web framework built on Tokio and Tower), everything is <strong>statically typed using Extractors</strong>:
+        </p>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-file">crates/server/src/routes/completions.rs</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="k">pub async fn</span> <span class="f">handle_completions</span>(
+    <span class="c">// 1. Extractor: Type-safe shared application state</span>
+    <span class="t">State</span>(state): <span class="t">State</span>&lt;<span class="t">AppState</span>&gt;,
+    <span class="c">// 2. Extractor: Deserializes JSON payload directly into typed struct</span>
+    <span class="t">Json</span>(payload): <span class="t">Json</span>&lt;<span class="t">ServerCompletionRequest</span>&gt;,
+) -&gt; <span class="t">Result</span>&lt;<span class="t">Response</span>, <span class="t">ServerError</span>&gt; {
+    <span class="c">// If the JSON from the browser was invalid, Axum rejected it</span>
+    <span class="c">// BEFORE this function even began! Zero manual validation code needed!</span>
+    
+    <span class="k">if</span> payload.request.stream {
+        <span class="c">// Returns Server-Sent Events (SSE) stream</span>
+        <span class="k">let</span> stream = connector.stream(&amp;payload.request).<span class="k">await</span><span class="k">?</span>;
+        <span class="t">Ok</span>(<span class="t">Sse</span>::new(stream_response).keep_alive(<span class="t">KeepAlive</span>::default()).into_response())
+    } <span class="k">else</span> {
+        <span class="c">// Returns standard JSON completion</span>
+        <span class="k">let</span> resp = connector.complete(&amp;payload.request).<span class="k">await</span><span class="k">?</span>;
+        <span class="t">Ok</span>(<span class="t">Json</span>(resp).into_response())
+    }
+}</code></pre>
+        </div>
+
+        <div class="why-box">
+          <div class="why-header">🎨 IntoResponse: Clean Error Propagation</div>
+          <div class="why-text">
+            Notice the return type: <code>Result&lt;Response, ServerError&gt;</code>.
+            Because <code>ServerError</code> implements Axum's <code>IntoResponse</code> trait, we can use the <code>?</code> operator throughout our handler. If an error occurs, Axum automatically converts our <code>ServerError</code> into the proper HTTP status code (e.g. 403 Forbidden or 429 Rate Limited) and JSON error response!
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 9: Interactive End-to-End Walkthrough -->
+      <section class="module-card" id="module-9">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Module 9</div>
+            <h2 class="module-title">End-to-End Journey: Tracing an AI Request</h2>
+          </div>
+          <span class="module-file-ref">Complete Architecture Flow</span>
+        </div>
+
+        <p class="section-p">
+          Let's trace what happens when you type <em>"Hello Gemini"</em> in the web dashboard and press <strong>Send Request</strong>:
+        </p>
+
+        <div class="diagram-wrap" style="align-items: stretch;">
+          <div style="display:flex; flex-direction:column; gap:0.75rem;">
+            <div style="background:var(--bg-card); border-left:4px solid #38BDF8; padding:0.75rem 1rem; border-radius:4px;">
+              <strong>Step 1: Dashboard UI (JavaScript)</strong><br>
+              <span style="font-size:0.85rem; color:var(--text-muted);">
+                Sends <code>POST /api/v1/chat/completions</code> with body <code>{ "provider": "gemini", "model": "gemini-2.5-flash", "messages": [...] }</code>
+              </span>
+            </div>
+            <div style="background:var(--bg-card); border-left:4px solid #FBBF24; padding:0.75rem 1rem; border-radius:4px;">
+              <strong>Step 2: Axum Server Route (routes/completions.rs)</strong><br>
+              <span style="font-size:0.85rem; color:var(--text-muted);">
+                Axum extracts <code>AppState</code> and deserializes JSON into <code>ServerCompletionRequest</code>.
+              </span>
+            </div>
+            <div style="background:var(--bg-card); border-left:4px solid #A78BFA; padding:0.75rem 1rem; border-radius:4px;">
+              <strong>Step 3: AppState & Connector Creation (state.rs & connector.rs)</strong><br>
+              <span style="font-size:0.85rem; color:var(--text-muted);">
+                <code>state.get_connector(...)</code> builds a validated <code>ConnectorConfig</code>, fetches the API key safely from OS Keychain (<code>KeyringSecretStore</code>), and instantiates <code>GeminiAdapter</code>.
+              </span>
+            </div>
+            <div style="background:var(--bg-card); border-left:4px solid #34D399; padding:0.75rem 1rem; border-radius:4px;">
+              <strong>Step 4: Upstream HTTP Execution (adapters/gemini/mod.rs)</strong><br>
+              <span style="font-size:0.85rem; color:var(--text-muted);">
+                Translates generic <code>CompletionRequest</code> into Gemini's native wire schema (<code>contents.parts</code>), executes request via <code>reqwest</code> over TLS.
+              </span>
+            </div>
+            <div style="background:var(--bg-card); border-left:4px solid #F43F5E; padding:0.75rem 1rem; border-radius:4px;">
+              <strong>Step 5: Retry & Error Handling (connector.rs & retry.rs)</strong><br>
+              <span style="font-size:0.85rem; color:var(--text-muted);">
+                If upstream returns 429 Rate Limit, <code>RetryPolicy</code> calculates exponential backoff + jitter and automatically retries before failing!
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- QUIZ: Test Your Rust Knowledge -->
+      <section class="quiz-card">
+        <div class="hero-tag" style="background: rgba(124, 58, 237, 0.2); color: #C084FC;">Interactive Checkpoint</div>
+        <div class="quiz-question" id="quiz-title">
+          ❓ Newbie Quiz: Why does <code>ApiKey</code> wrap a String in a private tuple struct instead of just using <code>type ApiKey = String;</code>?
+        </div>
+        <div class="quiz-options">
+          <button class="quiz-btn" onclick="checkAnswer(this, false)">
+            A. Because Rust strings are slower than tuple structs.
+          </button>
+          <button class="quiz-btn" onclick="checkAnswer(this, true)">
+            B. To prevent unauthorized construction, validate characters once at creation, and hide secrets from debug logs.
+          </button>
+          <button class="quiz-btn" onclick="checkAnswer(this, false)">
+            C. Because Axum only accepts tuple structs in its handlers.
+          </button>
+          <button class="quiz-btn" onclick="checkAnswer(this, false)">
+            D. To make the struct compatible with C libraries.
+          </button>
+        </div>
+        <div class="quiz-feedback" id="quiz-feedback"></div>
+      </section>
+
+      <!-- MODULE 10: Newbie Cheat Sheet & Glossary -->
+      <section class="module-card" id="glossary">
+        <div class="module-header">
+          <div>
+            <div class="module-num">Reference</div>
+            <h2 class="module-title">Rust Newbie Dictionary (Every Keyword in this Project)</h2>
+          </div>
+          <span class="module-file-ref">Quick Reference</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+          <div style="background:var(--bg-card-subtle); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border);">
+            <code style="color:var(--kw); font-weight:700;">pub(crate)</code>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">
+              Visible to any file inside the same crate, but hidden from external consumers.
+            </p>
+          </div>
+
+          <div style="background:var(--bg-card-subtle); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border);">
+            <code style="color:var(--type); font-weight:700;">Send + Sync</code>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">
+              Marker traits proving data can be transferred (<code>Send</code>) and referenced (<code>Sync</code>) safely across threads.
+            </p>
+          </div>
+
+          <div style="background:var(--bg-card-subtle); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border);">
+            <code style="color:var(--macro); font-weight:700;">#[derive(...)]</code>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">
+              Procedural macro that automatically generates implementations for standard traits (<code>Clone</code>, <code>Debug</code>, <code>PartialEq</code>).
+            </p>
+          </div>
+
+          <div style="background:var(--bg-card-subtle); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border);">
+            <code style="color:var(--fn); font-weight:700;">BoxStream&lt;'static, ...&gt;</code>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">
+              A heap-allocated, dynamic asynchronous stream that produces items over time (used for LLM token streaming).
+            </p>
+          </div>
+
+          <div style="background:var(--bg-card-subtle); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border);">
+            <code style="color:var(--kw); font-weight:700;">.await</code>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">
+              Pauses execution of the current async function until the Future completes, without blocking the thread.
+            </p>
+          </div>
+
+          <div style="background:var(--bg-card-subtle); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border);">
+            <code style="color:var(--type); font-weight:700;">thiserror</code>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">
+              Standard library-like macro for creating convenient, expressive custom error types in Rust libraries.
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-container">
+      <div>
+        <strong>AI Provider Connector</strong> — Rust Learning Companion
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-dim);">
+        Generated for pair-programming & newbie onboarding.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Theme toggle
+    const themeBtn = document.getElementById('theme-btn');
+    const themeLabel = document.getElementById('theme-label');
+    
+    function setTheme(theme) {
+      if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        themeLabel.textContent = '🌙 Dark';
+        localStorage.setItem('guide-theme', 'light');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        themeLabel.textContent = '☀️ Light';
+        localStorage.setItem('guide-theme', 'dark');
+      }
+    }
+
+    const savedTheme = localStorage.getItem('guide-theme') || 'dark';
+    setTheme(savedTheme);
+
+    themeBtn.addEventListener('click', () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      setTheme(isLight ? 'dark' : 'light');
+    });
+
+    // Copy code button handler
+    function copyCode(btn) {
+      const pre = btn.closest('.code-container').querySelector('pre code');
+      if (pre) {
+        navigator.clipboard.writeText(pre.innerText).then(() => {
+          const original = btn.textContent;
+          btn.textContent = '✓ Copied!';
+          setTimeout(() => btn.textContent = original, 2000);
+        });
+      }
+    }
+
+    // Progress tracker
+    let completedSteps = 0;
+    const totalSteps = 9;
+
+    function toggleStep(checkbox) {
+      if (checkbox.checked) {
+        completedSteps++;
+      } else {
+        completedSteps = Math.max(0, completedSteps - 1);
+      }
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const pct = Math.round((completedSteps / totalSteps) * 100);
+      document.getElementById('progress-bar').style.width = pct + '%';
+      document.getElementById('progress-percent').textContent = pct + '%';
+    }
+
+    // Quiz evaluation
+    function checkAnswer(btn, isCorrect) {
+      const feedback = document.getElementById('quiz-feedback');
+      const allBtns = btn.parentElement.querySelectorAll('.quiz-btn');
+      allBtns.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.style.display = 'block';
+        feedback.style.color = '#34D399';
+        feedback.innerHTML = '🎉 <strong>Correct!</strong> The Newtype pattern guarantees that any <code>ApiKey</code> instance in your code has passed validation, cannot be constructed illegally, and will not leak in debug logs.';
+      } else {
+        btn.classList.add('wrong');
+        feedback.style.display = 'block';
+        feedback.style.color = '#F87171';
+        feedback.innerHTML = '❌ <strong>Incorrect.</strong> The primary reason is security & domain modeling: validating the secret once at construction and hiding it from <code>Debug</code> formatting!';
+      }
+    }
+
+    // Search filter across modules
+    const searchInput = document.getElementById('guide-search');
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase().trim();
+      const modules = document.querySelectorAll('.module-card');
+      modules.forEach(m => {
+        if (!term) {
+          m.style.display = 'block';
+          return;
+        }
+        const text = m.innerText.toLowerCase();
+        m.style.display = text.includes(term) ? 'block' : 'none';
+      });
+    });
+
+    // Active link highlighting on scroll
+    window.addEventListener('scroll', () => {
+      const sections = document.querySelectorAll('section[id]');
+      const scrollPos = window.scrollY + 200;
+      sections.forEach(sec => {
+        const top = sec.offsetTop;
+        const height = sec.offsetHeight;
+        const id = sec.getAttribute('id');
+        const link = document.querySelector(`.nav-list a[href="#${id}"]`);
+        if (link) {
+          const item = link.closest('.nav-item');
+          if (scrollPos >= top && scrollPos < top + height) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
